@@ -1,0 +1,295 @@
+// Phillip Mantatsky 3/3/25
+// Half gammon game creates a basic game board with two players (X and O)
+// Each turn a dice is rolled and each player on their turn can choose to move a checker that's theirs.
+// There are specific rules to follow such as players cannot move a piece if their opponent has two or more pieces on that spot.
+// A game is won when either player makes all of their pieces across the board.
+
+#include <iostream>
+#include <fstream>
+#include "mersenne-twister.h"
+
+using namespace std;
+
+// Player1 is X, Player2 is O
+int player1[18];
+int player2[18];
+
+// Prints the starting game board along with each starting pieces.
+void createGameBoard() {
+	// height for game board
+	for (int k = 7; k > 0; k--){
+		// length for game board
+		for (int i = 0; i < 18; i++)  {
+			if (player1[i] >= k && i < 17) {
+				cout << "X" << "  ";
+			}
+			else if (player2[i] >= k && i > 0) {
+				cout << "O" << "  ";
+			}
+			else if (i == 0) {
+				cout << "   ";
+			}
+			else {
+				cout << "   ";
+			}
+		}
+		cout << endl;
+	}
+	cout << "   1  2  3  4  5  6  7  8  9  10 11 12 13 14 15 16    " << endl;
+}
+
+// Checks to see if there are the maximum amount of allowed pieces on either 17 or 0
+// arr1 is X and arr2 is O
+// Returns true if the game hasn't ended false if the game is over
+bool checkVictory(int arr1[], int arr2[]) {
+	if (arr1[17] == 7) {
+		return false;
+	}
+	else if (arr2[0] == 7) {
+		return false;
+	}
+	else {
+		return true;
+	}
+}
+
+// Takes in both arrays, which turn it is, the diceroll, and the players desired move position
+// Returns true if the move is valid or user inputs -1, false if the move isn't valid
+bool isValidMove(int arr1[], int arr2[], bool xTurn, int rand, int movePosition) {
+	if (movePosition == -1) {
+		return true;
+	}
+	if (xTurn && movePosition == 17) {
+		return false;
+	}
+	if (!xTurn && movePosition == 0) {
+		return false;
+	}
+	// checks rules like if the move is in bounds or if there are any opposing pieces on that space
+	if (0 <= movePosition && movePosition <= 17) {
+		if (xTurn && arr1[movePosition] > 0 && (arr2[movePosition + rand] < 2 || movePosition + rand >= 17)) {
+			return true;
+		}
+		else if (xTurn && arr1[0] == 1 && (arr2[movePosition + rand] < 2 || movePosition + rand >= 17)) {
+			return true;
+		}
+		else if (!xTurn && arr2[movePosition] > 0 && (arr1[movePosition - rand] < 2 || movePosition - rand < 0)) {
+			return true;
+		}
+		else if (!xTurn && arr2[17] == 1 && (arr1[movePosition - rand] < 2 || movePosition - rand < 0)) {
+			return true;
+		}
+		else {
+			return false;
+		}
+	}
+	return false;
+}
+
+// takes in both arrays and which turn it is and also the diceroll
+// Checks if the move immediatley after the bumped checker is valid and the opponent doesn't have two pieces on that spot
+// Returns true if the move is valid, false otherwise
+bool bumpedCheckerValid(int arr1[], int arr2[], bool xTurn, int rand) {
+	if (xTurn && arr1[0] == 1 && isValidMove(arr1, arr2, xTurn, rand, 0)) {
+			return true;
+		}
+	else if (!xTurn && arr2[17] == 1 && isValidMove(arr1, arr2, xTurn, rand, 17)) {
+		return true;
+	}
+	else {
+		return false;
+	}
+}
+
+// Checks all available moves to see if there can be a possible move for either player
+// Takes in both arrays, which turn it is, and diceroll
+// Returns true if a move is possible, false otherwise
+bool moveAvailable(int arr1[], int arr2[], bool xTurn, int rand) {
+	if (xTurn) {
+		// Iterates through the whole board checking for moves
+		for (int pos = 1; pos < 17; pos++) {
+			if (arr1[pos] > 0 && isValidMove(arr1, arr2, xTurn, rand, pos)) {
+				return true;
+			}
+		}
+	}
+	// same but for O instead of X
+	else {
+		for (int pos = 1; pos < 17; pos++) {
+			if (arr2[pos] > 0 && isValidMove(arr1, arr2, xTurn, rand, pos)) {
+				return true;
+			}
+		}
+	}
+	return false;
+}
+
+// Takes in both arrays and alters the board to the players choice
+void makeMove(int arr1[], int arr2[]) {
+	int movePosition;
+	bool xTurn = true;
+	bool oTurn = false;
+	// Checks if the victory has been achieved, if so exits the loop
+	while (checkVictory(arr1, arr2)) {
+		if (xTurn) {
+			int rand = chooseRandomNumber(1,6);
+			// Checks if there is a bumped checker that needs to be moved and moves accordingly
+			// Also checks if the bumped checker has a valid move
+			if (arr1[0] == 1 && bumpedCheckerValid(arr1, arr2, xTurn, rand)) {
+				cout << "It's X's turn." << endl;
+				cout << "Roll is " << rand << endl;
+				cout << "Bumped checker must move." << endl;
+				arr1[0] -= 1;
+				if (arr2[rand] == 1) {
+					arr2[rand] -= 1;
+					arr2[17] += 1;
+				}
+				arr1[rand] += 1;
+				createGameBoard();
+				xTurn = false;
+				oTurn = true;
+				continue;
+			}
+			// If no move is possible for bumped checker; skips turn
+			else if (arr1[0] == 1 && !bumpedCheckerValid(arr1, arr2, xTurn, rand)){
+				cout << "It's X's turn." << endl;
+				cout << "Roll is " << rand << endl;
+				cout << "Bumped checker must move." << endl;
+				cout << "No move possible." << endl;
+				createGameBoard();
+				xTurn = false;
+				oTurn = true;
+				continue;
+			}
+			cout << "It's X's turn." << endl;
+			cout << "Roll is " << rand << endl;
+			// Checks if there's a possible move available
+			if (!moveAvailable(arr1, arr2, xTurn, rand)) {
+				cout << "No move possible." << endl;
+				xTurn = false;
+				oTurn = true;
+				continue;
+			}
+			cout << "What position would you like to move (-1 to quit)? ";
+			cin >> movePosition;
+			// Exits loop if player quits
+			if (movePosition == -1) {
+				break;
+			}
+			// Checks if the inputted move is actually valid or not
+			// Repeats if still isn't valid
+			while (!(isValidMove(arr1, arr2, xTurn, rand, movePosition))) {
+				cout << "Invalid move. Try again." << endl;
+				cout << "What position would you like to move (-1 to quit)? ";
+				cin >> movePosition;
+			}
+			if (movePosition == -1) {
+				break;
+			}
+			int newPos = movePosition + rand;
+			// If diceroll overshoots array we still add it to end of the array
+			if (newPos >= 17) {
+				newPos = 17;
+			}
+			// Removes X from position and adds it to desired move spot
+			arr1[movePosition] -= 1;
+			arr1[newPos] += 1;
+			if (arr2[newPos] == 1) {
+				arr2[newPos] -= 1;
+				arr2[17] += 1;
+			}
+			if (!checkVictory(arr1, arr2)) {
+				cout << "Player X Wins!";
+				break;
+			}
+			createGameBoard();
+			// Now changes to O's turn
+			xTurn = false;
+			oTurn = true;
+		}
+		// Same as X except flipped for O since it's going the opposite direction
+		if (oTurn) {
+			int rand = chooseRandomNumber(1,6);
+			if (arr2[17] == 1 && bumpedCheckerValid(arr1, arr2, xTurn, rand)) {
+				cout << "It's O's turn." << endl;
+				cout << "Roll is " << rand << endl;
+				cout << "Bumped checker must move." << endl;
+				arr2[17] -= 1;
+				if (arr1[17 - rand] == 1) {
+					arr1[17 - rand] -= 1;
+					arr1[0] += 1;
+				}
+				arr2[17 - rand] += 1;
+				createGameBoard();
+				xTurn = true;
+				oTurn = false;
+				continue;
+			}
+			else if (arr2[17] == 1 && !bumpedCheckerValid(arr1, arr2, xTurn, rand)){
+				cout << "It's O's turn." << endl;
+				cout << "Roll is " << rand << endl;
+				cout << "Bumped checker must move." << endl;
+				cout << "No move possible." << endl;
+				createGameBoard();
+				xTurn = true;
+				oTurn = false;
+				continue;
+			}
+			cout << "It's O's turn." << endl;
+			cout << "Roll is " << rand << endl;
+			if (!moveAvailable(arr1, arr2, xTurn, rand)) {
+					cout << "No move possible." << endl;
+					xTurn = true;
+					oTurn = false;
+					createGameBoard();
+					continue;
+				}
+			cout << "What position would you like to move (-1 to quit)? ";
+			cin >> movePosition;
+			if (movePosition == -1) {
+				break;
+			}
+			while (!(isValidMove(arr1, arr2, xTurn, rand, movePosition))) {
+				cout << "Invalid move. Try again." << endl;
+				cout << "What position would you like to move (-1 to quit)? ";
+				cin >> movePosition;
+			}
+			if (movePosition == -1) {
+				break;
+			}
+			int newPos = movePosition - rand;
+			if (newPos <= 0) {
+				newPos = 0;
+			}
+			arr2[movePosition] -= 1;
+			arr2[newPos] += 1;
+			if (arr1[newPos] == 1) {
+				arr1[newPos] -= 1;
+				arr1[0] += 1;
+			}
+			if (!checkVictory(arr1, arr2)) {
+				cout << "Player O Wins!";
+				break;
+			}
+			createGameBoard();
+			oTurn = false;
+			xTurn = true;
+		}
+	} 
+}
+
+int main() 
+{
+	// Get the number to use as a random seed from the user
+	int randSeed;
+	cout << "Enter seed: ";
+	cin >> randSeed;
+	seed(randSeed);
+	// Sets up initial game board pieces
+	player1[1] = 5;
+	player1[3] = 2;
+	player2[14] = 2;
+	player2[16] = 5;
+	createGameBoard();
+	makeMove(player1, player2);
+}
